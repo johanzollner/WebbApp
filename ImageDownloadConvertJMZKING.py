@@ -4,11 +4,12 @@ import requests
 import os
 from PIL import Image
 from datetime import datetime
+import shutil
 
 def process_excel(df):
     """
     Funktion som tar in en DataFrame och utför nedladdning samt konvertering av bilder.
-    Returnerar en map för rapport och den skapade mappens namn.
+    Returnerar en rapport (str) och namnet på den mapp där bilderna sparas.
     """
     downloaded_images = 0
     converted_images = 0
@@ -53,14 +54,14 @@ def process_excel(df):
             else:
                 file_extension = '.jpeg'  # Standard till JPEG om okänt
 
-            file_name = f"{folder_name}/{art_nr}{file_extension}"
+            file_name = os.path.join(folder_name, f"{art_nr}{file_extension}")
             with open(file_name, 'wb') as f:
                 f.write(response.content)
                 downloaded_images += 1
 
             # Konvertera till WebP och ta bort originalbilden
             with Image.open(file_name) as img:
-                webp_name = f"{folder_name}/{art_nr}.webp"
+                webp_name = os.path.join(folder_name, f"{art_nr}.webp")
                 img.save(webp_name, "WEBP")
             os.remove(file_name)
             converted_images += 1
@@ -89,7 +90,6 @@ def process_excel(df):
         for line in report_lines:
             r.write(line + "\n")
 
-    # Returnera rapporten (som sträng) och sökvägen till mappen
     return "\n".join(report_lines), folder_name
 
 def main():
@@ -123,8 +123,22 @@ def main():
                         mime="text/plain"
                     )
 
+                # Skapa en zip av mappen
+                zip_file_path = f"{folder_name}.zip"
+                shutil.make_archive(folder_name, 'zip', folder_name)
+
+                # Möjlighet att ladda ned zip-filen med alla bilder
+                with open(zip_file_path, "rb") as f:
+                    st.download_button(
+                        label="Ladda ner alla bilder som zip",
+                        data=f,
+                        file_name=f"{folder_name}.zip",
+                        mime="application/zip"
+                    )
+
         except Exception as e:
             st.error(f"Ett fel uppstod vid inläsning: {e}")
 
 if __name__ == "__main__":
     main()
+
